@@ -5,8 +5,12 @@ on:
 
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
+    env:
+      FLUTTER_VERSION: 3.47.7
+      GRADLE_VERSION: 9.3.1
+      DSH_MAVEN_MIRRORS: 0
     steps:
       - uses: actions/checkout@v4
 
@@ -15,25 +19,33 @@ jobs:
           set -e
           unzip -q -o dsh-go-root-patch.zip -d /tmp/patchsrc
           cp -rv /tmp/patchsrc/dsh-go-root-patch/files/. .
-          echo --- changed ---
+          echo --- changed files ---
           git status --short
 
-      - name: Toolchain versions
-        run: |
-          java -version
-          echo "JAVA_HOME=$JAVA_HOME"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            17
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.47.7
           channel: stable
           cache: true
 
-      - name: Flutter version
-        run: flutter --version
+      - name: Toolchain versions
+        run: |
+          flutter --version
+          java -version
+          echo "ANDROID_HOME=$ANDROID_HOME"
 
-      - name: Pub get
+      - name: Pub get and local.properties
         working-directory: app
-        run: flutter pub get
+        run: |
+          flutter pub get --enforce-lockfile
+          printf "sdk.dir=%s\nflutter.sdk=%s\n" "$ANDROID_HOME" "$FLUTTER_ROOT" > android/local.properties
+          cat android/local.properties
 
       - name: Build release APK
         working-directory: app
